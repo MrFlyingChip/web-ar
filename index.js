@@ -24,7 +24,6 @@ const recenterTouchHandler = (e) => {
     // Call XrController.recenter() when the canvas is tapped with two fingers. This resets the
     // AR camera to the position specified by XrController.updateCameraProjectionMatrix() above.
     if (e.touches.length === 2) {
-        XR.XrController.recenter();
     } else if (e.touches.length === 1){
         if(baggage){
             startTouches = e.touches[0].clientX;
@@ -111,7 +110,7 @@ const startScene = () => {
     engine.enableOfflineSupport = false;
 
     scene = new BABYLON.Scene(engine);
-    camera = new BABYLON.FreeCamera('camera', new BABYLON.Vector3(0, 0, 0), scene);
+    camera = new BABYLON.DeviceOrientationCamera('camera', new BABYLON.Vector3(0, 0, 0), scene);
 
     initXrScene({ scene, camera }); // Add objects to the scene and set starting camera position.
 
