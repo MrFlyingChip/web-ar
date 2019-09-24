@@ -12,5 +12,4 @@ function handleOrientation(event) {
     output.innerHTML += "gamma: " + gamma + "\n";
 }
 
-
 window.addEventListener('deviceorientation', handleOrientation);
