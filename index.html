@@ -1,29 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Web-AR</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>8th Wall Web: babylon.js</title>
+    <link rel="stylesheet" type="text/css" href="index.css">
 
+    <!-- Babylon.js -->
+    <script src="https://preview.babylonjs.com/babylon.js"></script>
+    <script src="https://preview.babylonjs.com/loaders/babylonjs.loaders.js"></script>
+    <!-- client code -->
+    <script src="index.js"></script>
+    <title>Web-AR</title>
 </head>
 <body>
-    <div class="output"></div>
-
-    <script>
-        let output = document.querySelector('.output');
-
-        function handleOrientation(event) {
-            let absolute = event.absolute;
-            let alpha    = event.alpha;
-            let beta     = event.beta;
-            let gamma    = event.gamma;
-
-            output.innerHTML  = "absolute : " + absolute + "\n";
-            output.innerHTML += "alpha: " + alpha + "\n";
-            output.innerHTML += "beta: " + beta + "\n";
-            output.innerHTML += "gamma: " + gamma + "\n";
-        }
-
-        window.addEventListener('deviceorientation', handleOrientation);
-    </script>
+    <canvas id="renderCanvas"></canvas>
 </body>
 </html>
