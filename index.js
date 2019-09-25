@@ -155,9 +155,9 @@ function handleOrientation(event){
     let x = convertAngle(event.rotationRate.beta);  // In degree in the range [-180,180]
     let y = convertAngle(event.rotationRate.gamma); // In degree in the range [-90,90]
 
-    camera.rotation.x += x;
-    camera.rotation.y += y;
-    camera.rotation.z += z;
+    camera.rotation.x += x / 1000;
+    camera.rotation.y += y / 1000;
+    camera.rotation.z += z / 1000;
 }
 
 const onxrloaded = () => {
