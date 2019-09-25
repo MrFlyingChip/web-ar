@@ -150,7 +150,7 @@ xrCameraBehavior = function() {
     }
 };
 
-function handleOrientation(event, camera){
+function handleOrientation(event){
     let z = convertAngle(event.rotationRate.alpha);
     let x = convertAngle(event.rotationRate.beta);  // In degree in the range [-180,180]
     let y = convertAngle(event.rotationRate.gamma); // In degree in the range [-90,90]
