@@ -151,13 +151,13 @@ xrCameraBehavior = function() {
 
 handleOrientation = (event, camera) => {
 
-    let z = event.rotationRate.alpha;
-    let x = event.rotationRate.beta;  // In degree in the range [-180,180]
-    let y = event.rotationRate.gamma; // In degree in the range [-90,90]
+    let z = convertAngle(event.rotationRate.alpha);
+    let x = convertAngle(event.rotationRate.beta);  // In degree in the range [-180,180]
+    let y = convertAngle(event.rotationRate.gamma); // In degree in the range [-90,90]
 
     try {
         //sendLog(x);
-        camera.addRotation =  BABYLON.Vector3.RotationFromAxis(x, y, z);
+        camera.addRotation(x, y, z);
     }   catch (ex) {
         alert(ex.message);
     }
@@ -165,6 +165,10 @@ handleOrientation = (event, camera) => {
 
 const onxrloaded = () => {
     startScene();
+};
+
+convertAngle = (angle) => {
+    return Math.PI * angle / 180;
 };
 
 sendLog = (log) => {
