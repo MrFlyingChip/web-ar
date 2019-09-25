@@ -3,6 +3,11 @@ let baggage;
 const endScale = new BABYLON.Vector3(0.08, 0.08, 0.08) ;
 let startTouches;
 
+const permissionsToRequest = {
+    permissions: ["accelerometer", "gyroscope"],
+    origins: ["https://mrflyingchip.githubio/web-ar"]
+};
+
 // Populates some object into an XR scene and sets the initial camera position.
 const initXrScene = ({ scene, camera }) => {
 
@@ -110,12 +115,12 @@ const startScene = () => {
     engine.enableOfflineSupport = false;
 
     scene = new BABYLON.Scene(engine);
-    camera = new BABYLON.DeviceOrientationCamera('camera', new BABYLON.Vector3(0, 0, 0), scene);
+    camera = new BABYLON.FreeCamera('camera', new BABYLON.Vector3(0, 0, 0), scene);
 
     initXrScene({ scene, camera }); // Add objects to the scene and set starting camera position.
 
     // Connect the camera to the XR engine and show camera feed
-    //camera.addBehavior(XR.Babylonjs.xrCameraBehavior());
+    camera.addBehavior(xrCameraBehavior());
 
     canvas.addEventListener('touchstart', recenterTouchHandler, true);  // Add touch listener.
     canvas.addEventListener('touchmove', touchMove, true);  // Add touch move listener.
@@ -130,8 +135,43 @@ const startScene = () => {
     })
 };
 
+xrCameraBehavior = function() {
+    return {
+        name: "xrCameraBehavior",
+        attach: function(camera) {
+            let cameraEngine = camera.getEngine();
+            let cameraScene = camera.getScene();
+            camera.rotationQuaternion = BABYLON.Quaternion.FromEulerVector(camera.rotation);
+            window.addEventListener('devicemotion', (event) => {alert("kek");handleOrientation(event, camera);});
+        },
+        init: function() {},
+        detach: function() {}
+    }
+};
+
+handleOrientation = (event, camera) => {
+
+    let z = event.rotationRate.alpha;
+    let x = event.rotationRate.beta;  // In degree in the range [-180,180]
+    let y = event.rotationRate.gamma; // In degree in the range [-90,90]
+
+    try {
+        //sendLog(x);
+        camera.addRotation =  BABYLON.Vector3.RotationFromAxis(x, y, z);
+    }   catch (ex) {
+        alert(ex.message);
+    }
+};
+
 const onxrloaded = () => {
     startScene();
+};
+
+sendLog = (log) => {
+    const Http = new XMLHttpRequest();
+    const url='http://192.168.0.105:8000/console?log=' + log;
+    Http.open("GET", url);
+    Http.send();
 };
 
 // Show loading screen before the full XR library has been loaded.
