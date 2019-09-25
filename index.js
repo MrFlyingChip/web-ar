@@ -2,6 +2,7 @@ let surface, engine, scene, camera;
 let baggage;
 const endScale = new BABYLON.Vector3(0.08, 0.08, 0.08) ;
 let startTouches;
+let output;
 
 const permissionsToRequest = {
     permissions: ["accelerometer", "gyroscope"],
@@ -106,8 +107,9 @@ const placeBaggage = (pickResult) => {
     )
 };
 
-
 const startScene = () => {
+    output = document.querySelector('.output');
+
     console.log("startScene");
     const canvas = document.getElementById('renderCanvas');
 
@@ -115,6 +117,7 @@ const startScene = () => {
     engine.enableOfflineSupport = false;
 
     scene = new BABYLON.Scene(engine);
+
     camera = new BABYLON.FreeCamera('camera', new BABYLON.Vector3(0, 0, 0), scene);
 
     initXrScene({ scene, camera }); // Add objects to the scene and set starting camera position.
@@ -142,26 +145,22 @@ xrCameraBehavior = function() {
             let cameraEngine = camera.getEngine();
             let cameraScene = camera.getScene();
             camera.rotationQuaternion = BABYLON.Quaternion.FromEulerVector(camera.rotation);
-            window.addEventListener('devicemotion', (event) => {alert("kek");handleOrientation(event, camera);});
+            window.addEventListener('devicemotion', handleOrientation);
         },
         init: function() {},
         detach: function() {}
     }
 };
 
-handleOrientation = (event, camera) => {
-
+function handleOrientation(event){
     let z = convertAngle(event.rotationRate.alpha);
     let x = convertAngle(event.rotationRate.beta);  // In degree in the range [-180,180]
     let y = convertAngle(event.rotationRate.gamma); // In degree in the range [-90,90]
 
-    try {
-        //sendLog(x);
-        camera.addRotation(x, y, z);
-    }   catch (ex) {
-        alert(ex.message);
-    }
-};
+    output.innerHTML += "alpha: " + x + "\n";
+    output.innerHTML += "beta: " + y + "\n";
+    output.innerHTML += "gamma: " + z + "\n";
+}
 
 const onxrloaded = () => {
     startScene();
@@ -178,5 +177,4 @@ sendLog = (log) => {
     Http.send();
 };
 
-// Show loading screen before the full XR library has been loaded.
 window.onload = onxrloaded;
