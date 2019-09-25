@@ -108,8 +108,6 @@ const placeBaggage = (pickResult) => {
 };
 
 const startScene = () => {
-    output = document.querySelector('.output');
-
     console.log("startScene");
     const canvas = document.getElementById('renderCanvas');
 
@@ -167,7 +165,6 @@ xrCameraBehavior = function() {
     return {
         name: "xrCameraBehavior",
         attach: function(camera) {
-            alert("camera attached");
             window.addEventListener('deviceorientation', handleOrientation);
         },
         init: function() {},
