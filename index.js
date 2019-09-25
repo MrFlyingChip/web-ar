@@ -143,7 +143,7 @@ xrCameraBehavior = function() {
         name: "xrCameraBehavior",
         attach: function(camera) {
             alert("camera attached");
-            window.addEventListener('devicemotion', handleOrientation);
+            window.addEventListener('deviceorientation', handleOrientation);
         },
         init: function() {},
         detach: function() {}
@@ -151,13 +151,13 @@ xrCameraBehavior = function() {
 };
 
 function handleOrientation(event){
-    let z = convertAngle(event.rotationRate.alpha);
-    let x = convertAngle(event.rotationRate.beta);  // In degree in the range [-180,180]
-    let y = convertAngle(event.rotationRate.gamma); // In degree in the range [-90,90]
+    let z = convertAngle(event.alpha);
+    let x = convertAngle(event.beta);  // In degree in the range [-180,180]
+    let y = convertAngle(event.gamma); // In degree in the range [-90,90]
 
-    camera.rotation.x += x / 1000;
-    camera.rotation.y += y / 1000;
-    camera.rotation.z += z / 1000;
+    camera.rotation.x = x / 1000;
+    camera.rotation.y = y / 1000;
+    camera.rotation.z = z / 1000;
 }
 
 const onxrloaded = () => {
