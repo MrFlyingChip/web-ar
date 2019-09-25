@@ -128,6 +128,8 @@ const startScene = () => {
     canvas.addEventListener('touchmove', touchMove, true);  // Add touch move listener.
 
     let video = document.createElement("video");
+    video.autoplay = true;
+    video.playsinline = true;
 
     document.body.insertBefore(video, canvas);
     video.style = "position: absolute;";
@@ -145,7 +147,6 @@ const startScene = () => {
     navigator.mediaDevices.getUserMedia({ video: {facingMode: 'environment'}, audio: false })
         .then(function(stream) {
             video.srcObject = stream;
-            video.play();
         })
         .catch(function(err) {
             console.log("An error occurred: " + err);
