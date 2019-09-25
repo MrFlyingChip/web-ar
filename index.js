@@ -129,7 +129,7 @@ const startScene = () => {
 
     let video = document.createElement("video");
     video.autoplay = true;
-    video.playsinline = true;
+    video.webkitPlaysinline = true;
 
     document.body.insertBefore(video, canvas);
     video.style = "position: absolute;";
