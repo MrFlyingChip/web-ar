@@ -117,6 +117,7 @@ const startScene = () => {
     engine.enableOfflineSupport = false;
 
     scene = new BABYLON.Scene(engine);
+    scene.clearColor = new BABYLON.Color4(0,0,0,0);
 
     camera = new BABYLON.FreeCamera('camera', new BABYLON.Vector3(0, 0, 0), scene);
 
@@ -127,6 +128,30 @@ const startScene = () => {
 
     canvas.addEventListener('touchstart', recenterTouchHandler, true);  // Add touch listener.
     canvas.addEventListener('touchmove', touchMove, true);  // Add touch move listener.
+
+    let video = document.createElement("video");
+
+    document.body.insertBefore(video, canvas);
+    video.style = "position: absolute;";
+
+    let streaming = false;
+
+    video.addEventListener('canplay', function(ev){
+        if (!streaming) {
+            video.setAttribute('width', canvas.width);
+            video.setAttribute('height', canvas.height);
+            streaming = true;
+        }
+    }, false);
+
+    navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+        .then(function(stream) {
+            video.srcObject = stream;
+            video.play();
+        })
+        .catch(function(err) {
+            console.log("An error occurred: " + err);
+        });
 
     engine.runRenderLoop(() => {
         // Render scene
@@ -155,9 +180,9 @@ function handleOrientation(event){
     let x = convertAngle(event.beta);  // In degree in the range [-180,180]
     let y = convertAngle(event.gamma); // In degree in the range [-90,90]
 
-    camera.rotation.x = x / 1000;
-    camera.rotation.y = y / 1000;
-    camera.rotation.z = z / 1000;
+    camera.rotation.x = x;
+    camera.rotation.y = y;
+    camera.rotation.z = z;
 }
 
 const onxrloaded = () => {
