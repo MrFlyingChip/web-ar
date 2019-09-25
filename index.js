@@ -145,14 +145,14 @@ xrCameraBehavior = function() {
             let cameraEngine = camera.getEngine();
             let cameraScene = camera.getScene();
             camera.rotationQuaternion = BABYLON.Quaternion.FromEulerVector(camera.rotation);
-            window.addEventListener('devicemotion', handleOrientation);
+            window.addEventListener('devicemotion', (event) => {handleOrientation(event, camera);});
         },
         init: function() {},
         detach: function() {}
     }
 };
 
-function handleOrientation(event){
+function handleOrientation(event, camera){
     let z = convertAngle(event.rotationRate.alpha);
     let x = convertAngle(event.rotationRate.beta);  // In degree in the range [-180,180]
     let y = convertAngle(event.rotationRate.gamma); // In degree in the range [-90,90]
@@ -160,6 +160,8 @@ function handleOrientation(event){
     output.innerHTML = "alpha: " + x + "\n";
     output.innerHTML += "beta: " + y + "\n";
     output.innerHTML += "gamma: " + z + "\n";
+
+    camera.addRotation(x, y, z);
 }
 
 const onxrloaded = () => {
