@@ -148,6 +148,7 @@ xrCameraBehavior = function() {
                     video.autoplay = true;
                     video.playsInline = true;
                     let canvas = engine.getRenderingCanvas();
+                    canvas.style.position = "relative";
                     document.body.insertBefore(video, canvas);
                     video.srcObject = mediaStream;
                 });
