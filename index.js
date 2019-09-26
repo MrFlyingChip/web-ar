@@ -115,7 +115,7 @@ const startScene = () => {
     engine.enableOfflineSupport = false;
 
     scene = new BABYLON.Scene(engine);
-    scene.clearColor = new BABYLON.Color4(0,0,0,0);
+    scene.clearColor = new BABYLON.Color4(0,0,0,0.2);
 
     camera = new BABYLON.FreeCamera('camera', new BABYLON.Vector3(0, 0, 0), scene);
 
@@ -126,31 +126,6 @@ const startScene = () => {
 
     canvas.addEventListener('touchstart', recenterTouchHandler, true);  // Add touch listener.
     canvas.addEventListener('touchmove', touchMove, true);  // Add touch move listener.
-
-    let video = document.createElement("video");
-    video.autoplay = true;
-    video.webkitPlaysinline = true;
-
-    document.body.insertBefore(video, canvas);
-    video.style = "position: absolute;";
-
-    let streaming = false;
-
-    video.addEventListener('canplay', function(ev){
-        if (!streaming) {
-            video.setAttribute('width', canvas.width);
-            video.setAttribute('height', canvas.height);
-            streaming = true;
-        }
-    }, false);
-
-    navigator.mediaDevices.getUserMedia({ video: {facingMode: 'environment'}, audio: false })
-        .then(function(stream) {
-            video.srcObject = stream;
-        })
-        .catch(function(err) {
-            console.log("An error occurred: " + err);
-        });
 
     engine.runRenderLoop(() => {
         // Render scene
@@ -166,6 +141,17 @@ xrCameraBehavior = function() {
     return {
         name: "xrCameraBehavior",
         attach: function(camera) {
+            navigator.mediaDevices.getUserMedia({video: {facingMode: 'environment'}})
+                .then(mediaStream => {
+                    let video = document.createElement("video");
+                    video.style = "position: absolute; width: 100%; height:100%;";
+                    video.autoplay = true;
+                    video.playsInline = true;
+                    let canvas = engine.getRenderingCanvas();
+                    document.body.insertBefore(video, canvas);
+                    video.srcObject = mediaStream;
+                });
+
             window.addEventListener('deviceorientation', handleOrientation);
         },
         init: function() {},
