@@ -27,6 +27,7 @@ const initXrScene = ({ scene, camera }) => {
 };
 
 const recenterTouchHandler = (e) => {
+    console.log("kek");
     // Call XrController.recenter() when the canvas is tapped with two fingers. This resets the
     // AR camera to the position specified by XrController.updateCameraProjectionMatrix() above.
     if (e.touches.length === 2) {
@@ -76,6 +77,8 @@ const moveBaggage = (pickResult) => {
 };
 
 const placeBaggage = (pickResult) => {
+    baggage = true;
+
     const gltf = BABYLON.SceneLoader.LoadAssetContainer(
         './',
         'baggage.obj',
@@ -103,6 +106,7 @@ const placeBaggage = (pickResult) => {
         },
         function (error) { //onError
             console.log('Error loading model');
+            baggage = false;
         },
     )
 };
@@ -115,7 +119,7 @@ const startScene = () => {
     engine.enableOfflineSupport = false;
 
     scene = new BABYLON.Scene(engine);
-    scene.clearColor = new BABYLON.Color4(0,0,0,0.2);
+    scene.clearColor = new BABYLON.Color4(0,0,0,0);
 
     camera = new BABYLON.FreeCamera('camera', new BABYLON.Vector3(0, 0, 0), scene);
 
@@ -151,6 +155,7 @@ xrCameraBehavior = function() {
                     canvas.style.position = "relative";
                     document.body.insertBefore(video, canvas);
                     video.srcObject = mediaStream;
+                    video.addEventListener("onmousedown", recenterTouchHandler);
                 });
 
             window.addEventListener('deviceorientation', handleOrientation);
@@ -161,13 +166,18 @@ xrCameraBehavior = function() {
 };
 
 function handleOrientation(event){
+    alert("LOL");
     let z = convertAngle(event.alpha);
     let x = convertAngle(event.beta);  // In degree in the range [-180,180]
     let y = convertAngle(event.gamma); // In degree in the range [-90,90]
 
+    alert("Current location: alpha: " + z + " beta: " + x + " gamma: " + y);
+
     camera.rotation.x = x;
     camera.rotation.y = y;
     camera.rotation.z = z;
+
+    window.removeEventListener('deviceorientation', handleOrientation);
 }
 
 const onxrloaded = () => {
@@ -180,9 +190,17 @@ convertAngle = (angle) => {
 
 sendLog = (log) => {
     const Http = new XMLHttpRequest();
-    const url='http://192.168.0.105:8000/console?log=' + log;
+    const url='https://192.168.1.70:8000/console?log=' + log;
     Http.open("GET", url);
     Http.send();
+
+    if (Http.status !== 200) {
+        // обработать ошибку
+        alert( Http.status + ': ' + Http.statusText ); // пример вывода: 404: Not Found
+    } else {
+        // вывести результат
+        alert( Http.responseText ); // responseText -- текст ответа.
+    }
 };
 
 window.onload = onxrloaded;
