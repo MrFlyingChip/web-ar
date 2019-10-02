@@ -27,7 +27,6 @@ const initXrScene = ({ scene, camera }) => {
 };
 
 const recenterTouchHandler = (e) => {
-    console.log("kek");
     // Call XrController.recenter() when the canvas is tapped with two fingers. This resets the
     // AR camera to the position specified by XrController.updateCameraProjectionMatrix() above.
     if (e.touches.length === 2) {
@@ -126,7 +125,7 @@ const startScene = () => {
     initXrScene({ scene, camera }); // Add objects to the scene and set starting camera position.
 
     // Connect the camera to the XR engine and show camera feed
-    camera.addBehavior(xrCameraBehavior());
+    camera.addBehavior(window.XR.babylonXR().xrCameraBehavior());
 
     canvas.addEventListener('touchstart', recenterTouchHandler, true);  // Add touch listener.
     canvas.addEventListener('touchmove', touchMove, true);  // Add touch move listener.
@@ -141,66 +140,9 @@ const startScene = () => {
     })
 };
 
-xrCameraBehavior = function() {
-    return {
-        name: "xrCameraBehavior",
-        attach: function(camera) {
-            navigator.mediaDevices.getUserMedia({video: {facingMode: 'environment'}})
-                .then(mediaStream => {
-                    let video = document.createElement("video");
-                    video.style = "position: absolute; width: 100%; height:100%;";
-                    video.autoplay = true;
-                    video.playsInline = true;
-                    let canvas = engine.getRenderingCanvas();
-                    canvas.style.position = "relative";
-                    document.body.insertBefore(video, canvas);
-                    video.srcObject = mediaStream;
-                    video.addEventListener("onmousedown", recenterTouchHandler);
-                });
-
-            window.addEventListener('deviceorientation', handleOrientation);
-        },
-        init: function() {},
-        detach: function() {}
-    }
-};
-
-function handleOrientation(event){
-    alert("LOL");
-    let z = convertAngle(event.alpha);
-    let x = convertAngle(event.beta);  // In degree in the range [-180,180]
-    let y = convertAngle(event.gamma); // In degree in the range [-90,90]
-
-    alert("Current location: alpha: " + z + " beta: " + x + " gamma: " + y);
-
-    camera.rotation.x = x;
-    camera.rotation.y = y;
-    camera.rotation.z = z;
-
-    window.removeEventListener('deviceorientation', handleOrientation);
-}
-
 const onxrloaded = () => {
     startScene();
 };
 
-convertAngle = (angle) => {
-    return Math.PI * angle / 180;
-};
-
-sendLog = (log) => {
-    const Http = new XMLHttpRequest();
-    const url='https://192.168.1.70:8000/console?log=' + log;
-    Http.open("GET", url);
-    Http.send();
-
-    if (Http.status !== 200) {
-        // обработать ошибку
-        alert( Http.status + ': ' + Http.statusText ); // пример вывода: 404: Not Found
-    } else {
-        // вывести результат
-        alert( Http.responseText ); // responseText -- текст ответа.
-    }
-};
 
 window.onload = onxrloaded;
