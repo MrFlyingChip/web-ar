@@ -120,7 +120,7 @@ function XRWEB (){
         video.playsInline = true;
         canvas.style.position = "relative";
         document.body.insertBefore(video, canvas);
-        //video.srcObject = mediaStream;
+        video.srcObject = mediaStream;
     }
 
     function requestPermission(event) {
