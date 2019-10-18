@@ -1,34 +1,32 @@
-let surface, engine, scene, camera;
-let baggage;
-const endScale = new BABYLON.Vector3(0.08, 0.08, 0.08) ;
+let surface, scene, camera, canvas;
+let baggage = false;
+const endScale = new THREE.Vector3(0.15, 0.15, 0.15);
 let startTouches;
-let output;
-
-const permissionsToRequest = {
-    permissions: ["accelerometer", "gyroscope"],
-    origins: ["https://mrflyingchip.githubio/web-ar"]
-};
 
 // Populates some object into an XR scene and sets the initial camera position.
-const initXrScene = ({ scene, camera }) => {
+const initXrScene = (e) => {
+    scene = e.detail.scene;
+    camera = e.detail.camera;
+    canvas = e.detail.canvas;
 
-    const directionalLight = new BABYLON.DirectionalLight("DirectionalLight", new BABYLON.Vector3(0, -1, 1), scene);
-    directionalLight.intensity = 1.0;
+    canvas.addEventListener('touchstart', recenterTouchHandler, true);  // Add touch listener.
+    canvas.addEventListener('touchmove', touchMove, true);  // Add touch move listener.
 
-    // Set the initial camera position relative to the scene we just laid out. This must be at a
-    // height greater than y=0.
-    camera.position = new BABYLON.Vector3(0, 3, 5);
+    addFloor();
+};
 
-    const ground = BABYLON.Mesh.CreatePlane('ground', 100, scene);
-    ground.rotation.x = Math.PI / 2;
-    ground.material = new BABYLON.StandardMaterial("groundMaterial", scene);
-    ground.material.alpha = 0;
-    surface = ground;
+const addFloor = function () {
+    let geometry = new THREE.PlaneGeometry( 1000, 1000, 1000 );
+    let material = new THREE.MeshBasicMaterial( {color: 0xffffff, side: THREE.DoubleSide} );
+    material.transparent = true;
+    material.opacity = 0.0;
+    surface = new THREE.Mesh(geometry, material);
+    surface.position.y = -5;
+    surface.rotation.x = -Math.PI / 2;
+    scene.add(surface);
 };
 
 const recenterTouchHandler = (e) => {
-    // Call XrController.recenter() when the canvas is tapped with two fingers. This resets the
-    // AR camera to the position specified by XrController.updateCameraProjectionMatrix() above.
     if (e.touches.length === 2) {
     } else if (e.touches.length === 1){
         if(baggage){
@@ -36,11 +34,20 @@ const recenterTouchHandler = (e) => {
             return;
         }
 
-        const pickResult = scene.pick(e.touches[0].clientX, e.touches[0].clientY);
-        if(pickResult.hit && pickResult.pickedMesh === surface){
-            placeBaggage(pickResult);
+       let intersects = createIntersectWithObject(surface, e);
+        if(intersects.length > 0){
+            placeBaggage(intersects);
         }
     }
+};
+
+const createIntersectWithObject = (object, event) => {
+    let raycaster = new THREE.Raycaster();
+    let mouse = new THREE.Vector2();
+    mouse.x = ( event.touches[0].clientX / window.innerWidth ) * 2 - 1;
+    mouse.y = - ( event.touches[0].clientY / window.innerHeight ) * 2 + 1;
+    raycaster.setFromCamera( mouse, camera );
+    return raycaster.intersectObject(surface);
 };
 
 const touchMove = (e) => {
@@ -53,96 +60,76 @@ const touchMove = (e) => {
             return;
         }
 
-        const pickResult = scene.pick(e.touches[0].clientX, e.touches[0].clientY);
-        if(pickResult.hit && pickResult.pickedMesh === surface){
-            moveBaggage(pickResult);
+        let intersects = createIntersectWithObject(surface, e);
+        if(intersects.length > 0){
+            moveBaggage(intersects);
         }
     }
 };
 
 const rotateBaggage = (e) => {
     const rotation = (e.touches[0].clientX - startTouches) / 1000;
-    for (i = 0; i < baggage.meshes.length; i++) {
-        baggage.meshes[i].addRotation(0, rotation, 0)
-    }
+    baggage.rotateY(rotation);
 };
 
 const moveBaggage = (pickResult) => {
-    for (i = 0; i < baggage.meshes.length; i++) {
-        baggage.meshes[i]._position.x = pickResult.pickedPoint.x;
-        baggage.meshes[i]._position.y = pickResult.pickedPoint.y;
-        baggage.meshes[i]._position.z = pickResult.pickedPoint.z;
-    }
+    baggage.position.x = pickResult[0].point.x;
+    baggage.position.y = pickResult[0].point.y;
+    baggage.position.z = pickResult[0].point.z;
 };
 
 const placeBaggage = (pickResult) => {
     baggage = true;
-
-    const gltf = BABYLON.SceneLoader.LoadAssetContainer(
-        './',
+    let loader = new THREE.OBJLoader();
+    loader.load(
         'baggage.obj',
-        scene,
-        function (container) {  // onSuccess
-            // Adds all elements to the scene
-            baggage = container;
-            var myMaterial = new BABYLON.StandardMaterial("myMaterial", scene);
-            myMaterial.diffuseColor = new BABYLON.Color3(0, 0, 0);
-            myMaterial.alpha = 0.4;
-            for (i = 0; i < baggage.meshes.length; i++) {
-                baggage.meshes[i].material = myMaterial;
-                baggage.meshes[i]._position.x = pickResult.pickedPoint.x;
-                baggage.meshes[i]._position.y = pickResult.pickedPoint.y - 0.5;
-                baggage.meshes[i]._position.z = pickResult.pickedPoint.z;
-                baggage.meshes[i]._scaling.x = endScale.x;
-                baggage.meshes[i]._scaling.y = endScale.y;
-                baggage.meshes[i]._scaling.z = endScale.z;
+        function (object) {
+            object.position.x = pickResult[0].point.x;
+            object.position.y = pickResult[0].point.y;
+            object.position.z = pickResult[0].point.z;
+
+            object.scale.x = endScale.x;
+            object.scale.y = endScale.y;
+            object.scale.z = endScale.z;
+
+            let material = new THREE.MeshBasicMaterial( {color: 0x000000, side: THREE.FrontSide} );
+            material.transparent = true;
+            material.opacity = 0.3;
+            for (let i = 0; i < object.children.length; i++){
+                object.children[i].material = material;
             }
 
-            baggage.addAllToScene();
+            scene.add(object);
+            baggage = object;
         },
-        function (xhr) { //onProgress
-            console.log(`${(xhr.loaded / xhr.total * 100 )}% loaded`);
+        function (xhr) {
+            console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
         },
-        function (error) { //onError
-            console.log('Error loading model');
+        function (error) {
             baggage = false;
-        },
-    )
+            sendLog( 'An error happened' );
+        }
+    );
 };
 
 const startScene = () => {
-    console.log("startScene");
-    const canvas = document.getElementById('renderCanvas');
-
-    engine = new BABYLON.Engine(canvas, true, { stencil: true, preserveDrawingBuffer: true });
-    engine.enableOfflineSupport = false;
-
-    scene = new BABYLON.Scene(engine);
-    scene.clearColor = new BABYLON.Color4(0,0,0,0);
-
-    camera = new BABYLON.FreeCamera('camera', new BABYLON.Vector3(0, 0, 0), scene);
-
-    initXrScene({ scene, camera }); // Add objects to the scene and set starting camera position.
-
-    // Connect the camera to the XR engine and show camera feed
-    camera.addBehavior(window.XR.babylonXR().xrCameraBehavior());
-
-    canvas.addEventListener('touchstart', recenterTouchHandler, true);  // Add touch listener.
-    canvas.addEventListener('touchmove', touchMove, true);  // Add touch move listener.
-
-    engine.runRenderLoop(() => {
-        // Render scene
-        scene.render();
-    });
-
-    window.addEventListener('resize', () => {
-        engine.resize();
-    })
+    try {
+        window.XRWEB.threeJS();
+        window.addEventListener('XRStarted', initXrScene);
+    } catch (e) {
+        sendLog(e.message);
+    }
 };
 
 const onxrloaded = () => {
     startScene();
 };
 
+const sendLog = function (log){
+    const Http = new XMLHttpRequest();
+    const url='https://192.168.0.105:8000/console?log=' + log;
+    Http.open("GET", url);
+    Http.send();
+};
 
 window.onload = onxrloaded;

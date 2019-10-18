@@ -1,111 +1,75 @@
-window.XR = new XRWEB();
-
-function XRWEB (){
+let XRWEB = function (){
     let eventPermissions = [{event: DeviceMotionEvent, name: "devicemotion", func: handleDeviceMotion},
-        {event: DeviceOrientationEvent, name: "deviceorientation", func: handleOrientation}];
+        {event: DeviceOrientationEvent, name: "deviceorientation", func: handleOrientation},
+        {event: DeviceOrientationEvent, name: "orientationchange", func: handleScreenOrientation}];
 
-    let updateId;
-    let currentDeviceMotion = {orientation: {}, rotationRate: {}, acceleration: {}, accelerationIncludingGravity: {}};
-    let updateEvent;
+    let currentDeviceMotion = {deviceOrientation: {}, screenOrientation: 0, alphaOffset: 0};
     let startEvent;
 
-    this.babylonXR = function () {
-        let engineCamera;
-        let engineScene;
-        let engine;
-        let engineCanvas;
+    this.threeJS = function () {
+        let camera,  scene, renderer;
 
-        function onStart(){
-            setInterval(() => {
-                if(!currentDeviceMotion.currentRotation || !currentDeviceMotion.currentRotation.x){
-                    return;
-                }
-                //sendLog("Current position: x: " + convertAngleOpposite(engineCamera.position.x) + " y: " + convertAngleOpposite(engineCamera.position.y) + " z: " + convertAngleOpposite(engineCamera.position.z));
-                //sendLog("Current rotation: x: " + convertAngleOpposite(engineCamera.rotation.x) + " y: " + convertAngleOpposite(engineCamera.rotation.y) + " z: " + convertAngleOpposite(engineCamera.rotation.z));
-                //sendLog("x: " + currentDeviceMotion.acceleration.x + " y: " + currentDeviceMotion.acceleration.y + " z: " + currentDeviceMotion.acceleration.z);
-            }, 1000);
-
-            engineCamera.noRotationConstraint = true;
-            engineCamera.updateUpVectorFromRotation = true;
-
-            engineCamera.rotationQuaternion = translateRotation(engineCamera.rotationQuaternion);
-        }
-
-        function onUpdate() {
-            if(currentDeviceMotion.currentRotation){
-                engineCamera.rotationQuaternion = BABYLON.Quaternion.FromEulerAngles(currentDeviceMotion.currentRotation.x,
-                    currentDeviceMotion.currentRotation.y, currentDeviceMotion.currentRotation.z);
-            }
-
-            if(currentDeviceMotion.acceleration){
-                let position = engineCamera.globalPosition;
-                position.x += currentDeviceMotion.acceleration.x;
-                position.y += currentDeviceMotion.acceleration.y;
-                position.z += currentDeviceMotion.acceleration.z;
-            }
-
-            engineCamera.computeWorldMatrix();
-        }
-
-        function translateRotation(startRotation){
-            let result = new BABYLON.Quaternion;
-            if(scene.useRightHandedSystem){
-                let tempVector = new BABYLON.Vector3;
-                result.copyFrom(startRotation);
-                result.toEulerAnglesToRef(tempVector);
-                tempVector.x *= -1;
-                tempVector.z *= -1;
-                BABYLON.Quaternion.FromEulerVectorToRef(tempVector, result);
-            } else {
-                result.x = startRotation.x;
-                result.w = startRotation.w;
-                result.y = startRotation.y;
-                result.z = startRotation.z;
-            }
-
-            return result;
-        }
-
-        function translatePosition(startPosition) {
-            let result = new BABYLON.Vector3;
-            if(scene.useRightHandedSystem){
-               result.x = -startPosition.x;
-               result.y = startPosition.y;
-               result.z = -startPosition.z;
-            } else {
-                result.x = startPosition.x;
-                result.y = startPosition.y;
-                result.z = startPosition.z;
-            }
-
-            return result;
-        }
-
-        return {
-            xrCameraBehavior : function() {
-                return {
-                    name: "xrCameraBehavior",
-                    attach: function(camera) {
-                        engineCamera = camera;
-                        engineCamera.rotationQuaternion = BABYLON.Quaternion.FromEulerVector(engineCamera.rotation);
-                        engine = camera.getEngine();
-                        engineScene = camera.getScene();
-                        engineCanvas = engine.getRenderingCanvas();
-
-                        engineCamera.inertia = 0.2;
-
-                        runXR(engineCanvas);
-                        window.addEventListener("onStart", onStart);
-                        window.addEventListener("onUpdate", onUpdate);
-                    },
-                    init: function() {},
-                    detach: function() {}
-                }
+        function update() {
+            if (!currentDeviceMotion.enabled) return;
+            const device = currentDeviceMotion.deviceOrientation;
+            if (device) {
+                const alpha = device.alpha ? THREE.Math.degToRad( device.alpha ) + currentDeviceMotion.alphaOffset : 0; // Z
+                const beta = device.beta ? THREE.Math.degToRad( device.beta ) : 0; // X'
+                const gamma = device.gamma ? THREE.Math.degToRad( device.gamma ) : 0; // Y''
+                const orient = currentDeviceMotion.screenOrientation ? THREE.Math.degToRad( currentDeviceMotion.screenOrientation ) : 0; // O
+                setObjectQuaternion(camera.quaternion, alpha, beta, gamma, orient);
             }
         }
+
+        const setObjectQuaternion = function () {
+            var zee = new THREE.Vector3( 0, 0, 1 );
+            var euler = new THREE.Euler();
+            var q0 = new THREE.Quaternion();
+            var q1 = new THREE.Quaternion( - Math.sqrt( 0.5 ), 0, 0, Math.sqrt( 0.5 ) ); // - PI/2 around the x-axis
+            return function ( quaternion, alpha, beta, gamma, orient ) {
+                euler.set( beta, alpha, - gamma, 'YXZ' ); // 'ZXY' for the device, but 'YXZ' for us
+                quaternion.setFromEuler( euler ); // orient the device
+                quaternion.multiply( q1 ); // camera looks out the back of the device, not the top
+                quaternion.multiply( q0.setFromAxisAngle( zee, - orient ) ); // adjust for screen orientation
+            };
+        }();
+
+        function init(){
+            camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 1100 );
+            scene = new THREE.Scene();
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setClearColor( 0xffffff, 0);
+            document.body.appendChild(renderer.domElement);
+            window.addEventListener('resize', onWindowResize, false);
+            runXR(renderer.domElement, scene, camera);
+            handleScreenOrientation();
+            camera.rotation.reorder( 'YXZ' );
+
+            let light = new THREE.AmbientLight( 0x404040 ); // soft white light
+            scene.add( light );
+        }
+
+        function animate(){
+            window.requestAnimationFrame(animate);
+            update();
+            renderer.render( scene, camera );
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize( window.innerWidth, window.innerHeight );
+        }
+
+        init();
+        animate();
     };
 
-    function runXR(canvas){
+    function runXR(canvas, scene, camera){
+        startEvent = new CustomEvent('XRStarted', {'detail': {'scene': scene, 'camera': camera, 'canvas': canvas}});
+
         navigator.mediaDevices.getUserMedia({video: {facingMode: 'environment'}})
             .then(mediaStream => {
                 createVideoElement(mediaStream, canvas);
@@ -137,6 +101,7 @@ function XRWEB (){
     }
 
     function requestPermissions() {
+
         let permissionsPromises = eventPermissions.map(permission => {
             if(!permission.status || permission.status === "retry"){
                 let perm = requestPermission(permission.event);
@@ -165,7 +130,7 @@ function XRWEB (){
             });
 
             if(canLaunchXR){
-                tryLaunchXR();
+                window.dispatchEvent(startEvent);
             }
 
             return value.find(permission => {
@@ -190,104 +155,18 @@ function XRWEB (){
         });
     }
 
-    function tryLaunchXR(){
-        updateEvent = new CustomEvent("onUpdate");
-        startEvent = new CustomEvent("onStart");
-
-        start();
-        updateId = setInterval(update, 17);
-    }
-
-    function stopXR(){
-        clearInterval(updateId);
-    }
-
-    function start(){
-        window.dispatchEvent(startEvent);
-    }
-
-    function update() {
-        currentDeviceMotion.interval = 0;
-        if(currentDeviceMotion.rotationRate){
-            calculateRotation();
-        }
-
-        window.dispatchEvent(updateEvent);
-
-        calculateMoving();
-    }
-
-    function calculateRotation() {
-        if(!currentDeviceMotion.currentRotation){
-            if(currentDeviceMotion.orientation.beta){
-                currentDeviceMotion.currentRotation = {
-                    x: convertAngle(currentDeviceMotion.orientation.alpha),
-                    y: convertAngle(currentDeviceMotion.orientation.beta - 90),
-                    z: convertAngle(currentDeviceMotion.orientation.gamma)
-                };
-            }
-        }
-         else {
-             if(!currentDeviceMotion.rotationRate.beta){
-                 return;
-             }
-
-            let xRotation = convertAngle(-currentDeviceMotion.rotationRate.alpha);
-            let yRotation = convertAngle(-currentDeviceMotion.rotationRate.beta);
-            let zRotation = convertAngle(currentDeviceMotion.rotationRate.gamma);
-
-            currentDeviceMotion.currentRotation = {
-                x: xRotation + currentDeviceMotion.currentRotation.x,
-                y: yRotation + currentDeviceMotion.currentRotation.y,
-                z: zRotation + currentDeviceMotion.currentRotation.z
-            };
-
-            currentDeviceMotion.rotationRate.alpha = 0;
-            currentDeviceMotion.rotationRate.beta = 0;
-            currentDeviceMotion.rotationRate.gamma = 0;
-        }
-    }
-
-    function calculateMoving() {
-        currentDeviceMotion.acceleration = {
-            x: 0,
-            y: 0,
-            z: 0
-        };
-    }
-
     function handleOrientation(event){
-        currentDeviceMotion.orientation = {
-          alpha: event.alpha,
-          beta: event.beta,
-          gamma: event.gamma
-        };
+        currentDeviceMotion.enabled = true;
+
+        currentDeviceMotion.deviceOrientation = event;
+    }
+
+    function handleScreenOrientation() {
+       currentDeviceMotion.screenOrientation = window.orientation  || 0;
     }
 
     function handleDeviceMotion(event) {
-        currentDeviceMotion.rotationRate = {
-            alpha: event.rotationRate.alpha * event.interval + currentDeviceMotion.rotationRate.alpha || 0,
-            beta: event.rotationRate.beta * event.interval + currentDeviceMotion.rotationRate.beta || 0,
-            gamma: event.rotationRate.gamma * event.interval + currentDeviceMotion.rotationRate.gamma || 0
-        };
 
-        let xAcc = (Math.abs(event.acceleration.x) > 0.01) ? 1000 * event.acceleration.x * Math.pow(event.interval, 2) / 2 : 0;
-        let yAcc = (Math.abs(event.acceleration.y) > 0.01) ? 1000 * event.acceleration.y * Math.pow(event.interval, 2) / 2 : 0;
-        let zAcc = (Math.abs(event.acceleration.z) > 0.01) ? 1000 * event.acceleration.z * Math.pow(event.interval, 2) / 2 : 0;
-
-        currentDeviceMotion.acceleration = {
-            x: xAcc + currentDeviceMotion.acceleration.x || 0,
-            y: yAcc + currentDeviceMotion.acceleration.y || 0,
-            z: zAcc + currentDeviceMotion.acceleration.z || 0
-        };
-
-        currentDeviceMotion.accelerationIncludingGravity = {
-            alpha: event.accelerationIncludingGravity.alpha + currentDeviceMotion.accelerationIncludingGravity.alpha || 0,
-            beta: event.accelerationIncludingGravity.beta + currentDeviceMotion.accelerationIncludingGravity.beta || 0,
-            gamma: event.accelerationIncludingGravity.gamma + currentDeviceMotion.accelerationIncludingGravity.gamma || 0
-        };
-
-        currentDeviceMotion.interval += event.interval;
     }
 
     function showPermissionPrompt() {
@@ -328,19 +207,13 @@ function XRWEB (){
         })
     }
 
-    function convertAngle(angle){
-        return angle * Math.PI / 180;
-    }
-
-    function convertAngleOpposite(angle) {
-        return 180 * angle / Math.PI;
-    }
-
-    function sendLog(log){
+     function sendLog(log){
         const Http = new XMLHttpRequest();
-        const url='https://192.168.1.70:8000/console?log=' + log;
+        const url='https://192.168.0.105:8000/console?log=' + log;
         Http.open("GET", url);
         Http.send();
     }
-}
+};
+
+window.XRWEB = new XRWEB();
 
