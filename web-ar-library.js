@@ -5,6 +5,7 @@ let XRWEB = function (){
 
     let currentDeviceMotion = {deviceOrientation: {}, screenOrientation: 0, alphaOffset: 0};
     let startEvent;
+    let currentEngine;
 
     this.threeJS = function () {
         let camera,  scene, renderer;
@@ -19,6 +20,21 @@ let XRWEB = function (){
                 const orient = currentDeviceMotion.screenOrientation ? THREE.Math.degToRad( currentDeviceMotion.screenOrientation ) : 0; // O
                 setObjectQuaternion(camera.quaternion, alpha, beta, gamma, orient);
             }
+
+            const path = currentDeviceMotion.path;
+            if(path){
+               camera.position.x += path.x;
+               camera.position.y += path.y;
+               camera.position.z += path.z;
+
+               sendLog(path.x + " " + path.y + " " + path.z);
+
+               path.x = 0;
+               path.y = 0;
+               path.z = 0;
+            }
+
+            camera.updateProjectionMatrix();
         }
 
         const setObjectQuaternion = function () {
@@ -49,6 +65,8 @@ let XRWEB = function (){
 
             let light = new THREE.AmbientLight( 0x404040 ); // soft white light
             scene.add( light );
+
+            currentEngine = calculatePath;
         }
 
         function animate(){
@@ -61,6 +79,114 @@ let XRWEB = function (){
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize( window.innerWidth, window.innerHeight );
+        }
+
+        function rotateX(matrix, cos, sin){
+            let y = matrix[1];
+            let z = matrix[2];
+
+            matrix[1] = y * cos - z * sin;
+            matrix[2] = y * sin + z * cos;
+        }
+
+        function rotateY(matrix, cos, sin){
+            let x = matrix[0];
+            let z = matrix[2];
+
+            matrix[0] = x * cos + z * sin;
+            matrix[2] = -x * sin + z * cos;
+        }
+
+        function rotateZ(matrix, cos, sin){
+            let x = matrix[0];
+            let y = matrix[1];
+
+            matrix[0] = x * cos - y * sin;
+            matrix[1] = x * sin + y * cos;
+        }
+
+        function calculatePath(){
+            let acc = currentDeviceMotion.acceleration;
+
+            let xDeviceAcc = -acc.x;
+            let yDeviceAcc = -acc.y;
+            let zDeviceAcc = -acc.z;
+            
+            let rot = camera.quaternion.normalize();
+            let euler = new THREE.Euler();
+            euler.setFromQuaternion(rot, 'XYZ');
+
+            let xAngleCos = Math.cos(euler.x);
+            let yAngleCos = Math.cos(euler.y);
+            let zAngleCos = Math.cos(euler.z);
+
+            let xAngleSin = Math.sin(euler.x);
+            let yAngleSin = Math.sin(euler.y);
+            let zAngleSin = Math.sin(euler.z); 
+
+            let accelerationArray = [[xDeviceAcc, 0, 0], [0, yDeviceAcc, 0], [0, 0, zDeviceAcc]];
+            for(let i = 0; i < accelerationArray.length; i++){
+                rotateX(accelerationArray[i], xAngleCos, xAngleSin);
+                rotateY(accelerationArray[i], yAngleCos, yAngleSin);
+                rotateZ(accelerationArray[i], zAngleCos, zAngleSin);
+            }
+
+            let xAcc = 0;
+            let yAcc = 0;
+            let zAcc = 0;
+
+            for(let i = 0; i < accelerationArray.length; i++){
+                xAcc += accelerationArray[i][0];
+                yAcc += accelerationArray[i][1];
+                zAcc += accelerationArray[i][2];
+            }
+
+            let delta = 0;
+            let currentTime = window.performance.now();
+            if(currentDeviceMotion.time){
+                delta = (currentDeviceMotion.time - currentTime) / 500;
+            }
+
+            currentDeviceMotion.time = currentTime;
+
+            if(!currentDeviceMotion.speed){
+                currentDeviceMotion.speed = {x: 0, y: 0, z: 0};
+            }
+
+            let xSpeed = currentDeviceMotion.speed.x;
+            let ySpeed = currentDeviceMotion.speed.y;
+            let zSpeed = currentDeviceMotion.speed.z;
+
+            if(Math.abs(xAcc) < 0.1){
+                xAcc = 0;
+                xSpeed = 0;
+            }
+
+            if(Math.abs(yAcc) < 0.1){
+                yAcc = 0;
+                ySpeed = 0;
+            }
+
+            if(Math.abs(zAcc) < 0.1){
+                zAcc = 0;
+                zSpeed = 0;
+            }
+
+            let xPath = xSpeed * delta + xAcc * Math.pow(delta, 2) / 2;
+            let yPath = ySpeed * delta + yAcc * Math.pow(delta, 2) / 2;
+            let zPath = zSpeed * delta + zAcc * Math.pow(delta, 2) / 2;
+
+            if(!currentDeviceMotion.path){
+                currentDeviceMotion.path = {x: 0, y: 0, z: 0};
+            }
+
+            currentDeviceMotion.path.x += xPath;
+            currentDeviceMotion.path.y += yPath;
+            currentDeviceMotion.path.z += zPath;
+
+            currentDeviceMotion.speed.x = xSpeed + delta * xAcc;
+            currentDeviceMotion.speed.y = ySpeed + delta * yAcc;
+            currentDeviceMotion.speed.z = zSpeed + delta * zAcc;
         }
 
         init();
@@ -166,7 +292,11 @@ let XRWEB = function (){
     }
 
     function handleDeviceMotion(event) {
+        currentDeviceMotion.acceleration = event.acceleration || {};
 
+        if(currentEngine){
+            currentEngine();   
+        }
     }
 
     function showPermissionPrompt() {
@@ -209,7 +339,7 @@ let XRWEB = function (){
 
      function sendLog(log){
         const Http = new XMLHttpRequest();
-        const url='https://192.168.0.105:8000/console?log=' + log;
+        const url='https://192.168.1.241:8000/console?log=' + log;
         Http.open("GET", url);
         Http.send();
     }
